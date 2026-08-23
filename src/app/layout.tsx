@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavBar } from "@/components/nav/nav-bar";
+import { StackProvider } from "@stackframe/stack";
+import { stackServerApp } from "@/stack/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +20,8 @@ export const metadata: Metadata = {
   description: "Learn how to build and scale Next.js apps with Brian Holt",
 };
 
+import { StackThemeWrapper } from "@/components/stack-theme-wrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,8 +32,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NavBar />
-        {children}
+        <StackProvider app={stackServerApp}>
+          <StackThemeWrapper>
+            <NavBar />
+            {children}
+          </StackThemeWrapper>
+        </StackProvider>
       </body>
     </html>
   );

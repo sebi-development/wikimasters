@@ -1,6 +1,55 @@
 "use server";
 
+import { stackServerApp } from "@/stack/server";
+import { ensureUserExists } from "@/db/sync-user";
+import { eq, desc } from "drizzle-orm";
+import db from '@/db'
+import { articles, usersSync } from "@/db/schema";
 import { redirect } from "next/navigation";
+
+export async function getArticleById(id: number) {
+  const result = await db
+    .select({
+      id: articles.id,
+      title: articles.title,
+      slug: articles.slug,
+      content: articles.content,
+      imageUrl: articles.imageUrl,
+      published: articles.published,
+      authorId: articles.authorId,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      author: usersSync.name,
+    })
+    .from(articles)
+    .leftJoin(usersSync, eq(articles.authorId, usersSync.id))
+    .where(eq(articles.id, id))
+    .limit(1);
+
+  return result[0] ?? null;
+}
+
+export async function getAllArticles() {
+  const result = await db
+    .select({
+      id: articles.id,
+      title: articles.title,
+      slug: articles.slug,
+      content: articles.content,
+      imageUrl: articles.imageUrl,
+      published: articles.published,
+      authorId: articles.authorId,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      author: usersSync.name,
+    })
+    .from(articles)
+    .leftJoin(usersSync, eq(articles.authorId, usersSync.id))
+    .where(eq(articles.published, true))
+    .orderBy(desc(articles.createdAt));
+
+  return result;
+}
 
 export type CreateArticleInput = {
   title: string;
@@ -16,20 +65,41 @@ export type UpdateArticleInput = {
 };
 
 export async function createArticle(data: CreateArticleInput) {
-  // TODO: Replace with actual database call
-  console.log("✨ createArticle called:", data);
+  const user = await stackServerApp.getUser()
+  if (!user) throw new Error('ERROR: Unauthorized')
+
+  await ensureUserExists(user);
+
+  await db.insert(articles).values({
+    title: data.title,
+    content: data.content,
+    slug: `${Date.now()}`,
+    published: true,
+    authorId: user.id,
+  })
+
   return { success: true, message: "Article create logged (stub)" };
 }
 
 export async function updateArticle(id: string, data: UpdateArticleInput) {
-  // TODO: Replace with actual database update
-  console.log("📝 updateArticle called:", { id, ...data });
+  const user = await stackServerApp.getUser()
+  if (!user) throw new Error('ERROR: Unauthorized')
+
+  const authorId = user.id
+
+  await db.update(articles).set({
+    title: data.title,
+    content: data.content
+  }).where(eq(articles.id, +id))
+
   return { success: true, message: `Article ${id} update logged (stub)` };
 }
 
 export async function deleteArticle(id: string) {
-  // TODO: Replace with actual database delete
-  console.log("🗑️ deleteArticle called:", id);
+  const user = stackServerApp.getUser()
+  if (!user) throw new Error('ERROR: Unauthorized')
+
+  await db.delete(articles).where(eq(articles.id, +id))
   return { success: true, message: `Article ${id} delete logged (stub)` };
 }
 

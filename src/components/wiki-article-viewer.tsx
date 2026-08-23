@@ -220,29 +220,6 @@ export default function WikiArticleViewer({
         <Link href="/">
           <Button variant="outline">← Back to Articles</Button>
         </Link>
-
-        {canEdit && (
-          <div className="flex items-center gap-2">
-            <Link href={`/wiki/edit/${article.id}`} className="cursor-pointer">
-              <Button className="cursor-pointer">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit This Article
-              </Button>
-            </Link>
-
-            <form action={deleteArticleForm}>
-              <input type="hidden" name="id" value={String(article.id)} />
-              <Button
-                type="submit"
-                variant="destructive"
-                className="cursor-pointer"
-              >
-                <Trash className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            </form>
-          </div>
-        )}
       </div>
     </div>
   );

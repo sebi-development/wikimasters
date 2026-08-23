@@ -4,10 +4,23 @@ import MDEditor from "@uiw/react-md-editor";
 import { Upload, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createArticle, updateArticle } from "@/app/actions/articles";
 
 interface WikiEditorProps {
   initialTitle?: string;
@@ -38,6 +51,7 @@ export default function WikiEditor({
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   // Validate form
   const validateForm = (): boolean => {
@@ -79,43 +93,27 @@ export default function WikiEditor({
 
     setIsSubmitting(true);
 
-    const formData: FormData = {
-      title: title.trim(),
-      content: content.trim(),
-      files,
-    };
-
-    // Log the form data (as requested - no actual API calls)
-    console.log("Form submitted:", {
-      action: isEditing ? "edit" : "create",
-      articleId: isEditing ? articleId : undefined,
-      data: formData,
-    });
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setIsSubmitting(false);
-
-    // In a real app, you would navigate after successful submission
-    alert(
-      `Article ${
-        isEditing ? "updated" : "created"
-      } successfully! Check console for form data.`,
-    );
-  };
-
-  // Handle cancel
-  const handleCancel = () => {
-    // In a real app, you would navigate back
-    const shouldLeave = window.confirm(
-      "Are you sure you want to cancel? Any unsaved changes will be lost.",
-    );
-    if (shouldLeave) {
-      console.log("User cancelled editing");
-      // navigation logic would go here
+    try {
+      if (isEditing && articleId) {
+        await updateArticle(articleId, {
+          title: title.trim(),
+          content: content.trim(),
+        });
+        router.push(`/wiki/${articleId}`);
+      } else {
+        await createArticle({
+          title: title.trim(),
+          content: content.trim(),
+          authorId: "", // filled by the server action from the session
+        });
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Failed to save article:", error);
+      setIsSubmitting(false);
     }
   };
+
 
   const pageTitle = isEditing ? "Edit Article" : "Create New Article";
 
@@ -257,14 +255,35 @@ export default function WikiEditor({
         <Card>
           <CardContent className="pt-6">
             <div className="flex justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger disabled={isSubmitting} render={
+                  <Button type="button" variant="outline">
+                    Cancel
+                  </Button>
+                } />
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel? Any unsaved changes will be lost.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (isEditing && articleId) {
+                          router.push(`/wiki/${articleId}`);
+                        } else {
+                          router.push("/");
+                        }
+                      }}
+                    >
+                      Yes, cancel
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 type="submit"
                 disabled={isSubmitting}
