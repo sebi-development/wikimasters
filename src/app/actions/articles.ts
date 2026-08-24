@@ -76,6 +76,7 @@ export async function createArticle(data: CreateArticleInput) {
     slug: `${Date.now()}`,
     published: true,
     authorId: user.id,
+    imageUrl: data.imageUrl ?? undefined
   })
 
   return { success: true, message: "Article create logged (stub)" };
@@ -89,7 +90,8 @@ export async function updateArticle(id: string, data: UpdateArticleInput) {
 
   await db.update(articles).set({
     title: data.title,
-    content: data.content
+    content: data.content,
+    ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
   }).where(eq(articles.id, +id))
 
   return { success: true, message: `Article ${id} update logged (stub)` };

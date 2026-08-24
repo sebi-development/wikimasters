@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createArticle, updateArticle } from "@/app/actions/articles";
+import { uploadFile } from "@/app/actions/upload";
 
 interface WikiEditorProps {
   initialTitle?: string;
@@ -94,10 +95,20 @@ export default function WikiEditor({
     setIsSubmitting(true);
 
     try {
+      // Upload the first image file if one was selected
+      let imageUrl: string | undefined;
+      if (files.length > 0) {
+        const formData = new FormData();
+        formData.append("files", files[0]);
+        const uploaded = await uploadFile(formData);
+        imageUrl = uploaded.url;
+      }
+
       if (isEditing && articleId) {
         await updateArticle(articleId, {
           title: title.trim(),
           content: content.trim(),
+          imageUrl,
         });
         router.push(`/wiki/${articleId}`);
       } else {
@@ -105,6 +116,7 @@ export default function WikiEditor({
           title: title.trim(),
           content: content.trim(),
           authorId: "", // filled by the server action from the session
+          imageUrl,
         });
         router.push("/");
       }
