@@ -11,8 +11,13 @@ export async function getArticles() {
 
   if (cached) return cached
 
-  const response = await db.select({ title: articles.title, id: articles.id, createdAt: articles.createdAt, content: articles.content, author: usersSync.name })
+  const response = await db.select({ title: articles.title, id: articles.id, createdAt: articles.createdAt, content: articles.content, author: usersSync.name, summary: articles.summary })
     .from(articles).leftJoin(usersSync, eq(articles.authorId, usersSync.id))
+
+  await redis.set('articles:all', response, {
+    ex: 60,
+  })
+
   return response
 }
 

@@ -18,6 +18,8 @@ export const articles = pgTable("articles", {
     .references(() => usersSync.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  summary: text("summary"),
+  isAnonymous: boolean().notNull().default(false)
 });
 
 export const schema = { articles, usersSync };

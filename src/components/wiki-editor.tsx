@@ -1,10 +1,11 @@
 "use client";
 
 import MDEditor from "@uiw/react-md-editor";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Sparkles, HatGlasses, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,11 +22,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createArticle, updateArticle } from "@/app/actions/articles";
-import { uploadFile } from "@/app/actions/upload";
+import { deleteFile, uploadFile } from "@/app/actions/upload";
+import { toast } from "@/components/ui/toast";
 
 interface WikiEditorProps {
   initialTitle?: string;
   initialContent?: string;
+  initialImageUrl?: string | null;
   isEditing?: boolean;
   articleId?: string;
 }
@@ -44,14 +47,23 @@ interface FormErrors {
 export default function WikiEditor({
   initialTitle = "",
   initialContent = "",
+  initialImageUrl = null,
   isEditing = false,
   articleId,
 }: WikiEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [files, setFiles] = useState<File[]>([]);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(
+    initialImageUrl ?? null,
+  );
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [useAiSummary, setUseAiSummary] = useState(true);
+  const [useAnonymousPost, setUseAnonymousPost] = useState(false);
+
   const router = useRouter();
 
   // Validate form
@@ -91,12 +103,12 @@ export default function WikiEditor({
     if (!validateForm()) {
       return;
     }
-
     setIsSubmitting(true);
 
-    try {
+    const saveOperation = async () => {
       // Upload the first image file if one was selected
       let imageUrl: string | undefined;
+
       if (files.length > 0) {
         const formData = new FormData();
         formData.append("files", files[0]);
@@ -104,28 +116,49 @@ export default function WikiEditor({
         imageUrl = uploaded.url;
       }
 
+      if (isEditing && removeExistingImage && existingImageUrl) {
+        await deleteFile(existingImageUrl);
+        if (!imageUrl) {
+          imageUrl = "";
+        }
+      }
+
       if (isEditing && articleId) {
         await updateArticle(articleId, {
           title: title.trim(),
           content: content.trim(),
           imageUrl,
+          useAiSummary,
+          isAnonymous: useAnonymousPost,
         });
         router.push(`/wiki/${articleId}`);
+        return "Article updated successfully!";
       } else {
         await createArticle({
           title: title.trim(),
           content: content.trim(),
           authorId: "", // filled by the server action from the session
           imageUrl,
+          useAiSummary,
+          isAnonymous: useAnonymousPost,
         });
         router.push("/");
+        return "Article created successfully!";
       }
-    } catch (error) {
-      console.error("Failed to save article:", error);
-      setIsSubmitting(false);
-    }
-  };
+    };
 
+    const promise = saveOperation();
+
+    toast.promise(promise, {
+      loading: isEditing ? "Saving your edits..." : "Publishing new article...",
+      success: (message) => message,
+      error: "Failed to save the article. Please try again.",
+    });
+
+    promise.finally(() => {
+      setIsSubmitting(false);
+    });
+  };
 
   const pageTitle = isEditing ? "Edit Article" : "Create New Article";
 
@@ -203,15 +236,15 @@ export default function WikiEditor({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+              <label
+                htmlFor="file-upload"
+                className="block border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+              >
                 <Upload className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="file-upload"
-                    className="cursor-pointer text-sm font-medium"
-                  >
+                  <span className="text-sm font-medium block">
                     Click to upload files
-                  </Label>
+                  </span>
                   <p className="text-xs text-muted-foreground">
                     Upload images, documents, or other files to attach to your
                     article
@@ -224,7 +257,7 @@ export default function WikiEditor({
                   onChange={handleFileUpload}
                   className="sr-only"
                 />
-              </div>
+              </label>
 
               {/* Display uploaded files */}
               {files.length > 0 && (
@@ -250,15 +283,140 @@ export default function WikiEditor({
                           variant="ghost"
                           size="sm"
                           onClick={() => removeFile(index)}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                         >
-                          <X className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Existing Attached Files */}
+              {existingImageUrl && !removeExistingImage && (
+                <div className="space-y-2 mt-4">
+                  <Label className="text-sm font-medium">
+                    Existing Attachment:
+                  </Label>
+                  <div className="flex items-center justify-between p-2 bg-muted rounded-md border">
+                    <div className="flex items-center space-x-2 overflow-hidden">
+                      <span className="text-sm font-medium truncate">
+                        {existingImageUrl.split("/").pop()}
+                      </span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        (Already attached)
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRemoveExistingImage(true)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* "Image will be removed" undo banner */}
+              {removeExistingImage && existingImageUrl && (
+                <div className="flex items-center justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <span className="text-sm text-destructive">
+                    Image will be removed on save
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRemoveExistingImage(false)}
+                  >
+                    Undo
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Options card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Options</CardTitle>
+          </CardHeader>
+          {/* AI Summary Toggle */}
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div
+                className={`flex items-center gap-3 transition-all duration-300 ${!useAiSummary ? "opacity-50 grayscale" : ""}`}
+              >
+                {/* SVG definition for the static icon gradient */}
+                <svg width="0" height="0" className="absolute">
+                  <defs>
+                    <linearGradient
+                      id="ai-editor-gradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%"
+                    >
+                      <stop offset="0%" stopColor="#ec4899" />
+                      <stop offset="50%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <Sparkles
+                  className="size-5 shrink-0"
+                  style={{ stroke: "url(#ai-editor-gradient)" }}
+                />
+                <div>
+                  <Label
+                    htmlFor="ai-summary"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    AI Summary
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Automatically generate a concise summary of your article
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="ai-summary"
+                checked={useAiSummary}
+                onCheckedChange={setUseAiSummary}
+                className="cursor-pointer"
+              />
+            </div>
+          </CardContent>
+
+          {/* Anonymous article toggle */}
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div
+                className={`flex items-center gap-3 transition-all duration-300 ${!useAnonymousPost ? "opacity-50 grayscale" : ""}`}
+              >
+                <HatGlasses className="size-5 shrink-0" />
+                <div>
+                  <Label
+                    htmlFor="anonymous-post"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    Anonymous post
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Show your post as anonymous (your username will be hidden)
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="anonymous-post"
+                checked={useAnonymousPost}
+                onCheckedChange={setUseAnonymousPost}
+              />
             </div>
           </CardContent>
         </Card>
@@ -266,18 +424,22 @@ export default function WikiEditor({
         {/* Action Buttons */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-2">
               <AlertDialog>
-                <AlertDialogTrigger disabled={isSubmitting} render={
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                } />
+                <AlertDialogTrigger
+                  disabled={isSubmitting}
+                  render={
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  }
+                />
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to cancel? Any unsaved changes will be lost.
+                      Are you sure you want to cancel? Any unsaved changes will
+                      be lost.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -299,7 +461,7 @@ export default function WikiEditor({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="min-w-[100px]"
+                className="min-w-25"
               >
                 {isSubmitting ? "Saving..." : "Save Article"}
               </Button>

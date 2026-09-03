@@ -1,17 +1,12 @@
-import { seed } from "drizzle-seed";
 import db, { sql } from "@/db/index";
+import { seed } from "drizzle-seed";
 import { articles, usersSync } from "@/db/schema";
-
-const SEED_COUNT = 25;
-const SEED = 1337;
 
 async function main() {
   try {
-    console.log(`🌱 Starting DB seed with seed ${SEED}...`);
+    console.log("🌱 Starting DB seed...");
 
     console.log("🧹 Truncating articles table and restarting identity...");
-    // Use TRUNCATE + RESTART IDENTITY so sequences are reset to match an empty table.
-    // This is simpler and avoids needing to call setval later.
     await sql.query("TRUNCATE TABLE articles RESTART IDENTITY CASCADE;");
 
     console.log("🔎 Querying existing users...");
@@ -30,13 +25,13 @@ async function main() {
       users = [{ id: "seed-user-001" }];
     }
 
+    const defaultAuthorId = users[0].id;
     const ids = users.map((user) => user.id);
-    console.log(`👥 Using ${users.length} user(s)`);
 
-    console.log("🍩 Using drizzle-seed...");
-    await seed(db, { articles }, { seed: SEED }).refine((funcs) => ({
+    console.log("🍩 Using drizzle-seed to restore original data...");
+    await seed(db, { articles }, { seed: 1337 }).refine((funcs) => ({
       articles: {
-        count: SEED_COUNT,
+        count: 25,
         columns: {
           authorId: funcs.valuesFromArray({
             values: ids,
@@ -71,11 +66,104 @@ async function main() {
       },
     }));
 
-    console.log(`✅ Inserted ${SEED_COUNT} article(s) into the database\n`);
+    console.log(`✅ Restored 25 original article(s) into the database\n`);
 
-    // Ensure the articles sequence is synced to the current MAX(id). This is a
-    // safety measure in case the DB was imported or mutated in a way that left
-    // the sequence behind the table's max value.
+    try {
+      await sql.query(
+        `SELECT setval(pg_get_serial_sequence('articles','id'), COALESCE((SELECT MAX(id) FROM articles), 1), true);`,
+      );
+      console.log("✅ Sequence synced after drizzle-seed");
+    } catch (err) {
+      console.warn("⚠️ Failed to sync articles sequence after drizzle-seed:", err);
+    }
+
+    console.log("📝 Inserting real news seed articles...");
+
+    const seedArticles = [
+      {
+        title: "Everything We Learned From the New GTA 6 Trailer & Why the Hype is Real! 🚗💨",
+        slug: `gta-6-gameplay-trailer-${Date.now()}-1`,
+        content: `
+# Return to Vice City: The Next Generation of Open World Gaming
+
+Rockstar Games has finally dropped the latest gameplay look for **Grand Theft Auto VI**, and to say the internet is exploding would be an absolute understatement! As a lifelong fan of the franchise, seeing Leonida rendered with this level of detail is a dream come true.
+
+---
+
+## 🔑 Key Release Details & News
+
+* **Setting:** The fictional state of **Leonida** (based on Florida), featuring an expanded, modern-day **Vice City**.
+* **Dual Protagonists:** Meet **Lucia** (the franchise's first female protagonist since 1999) and her partner-in-crime **Jason**, bringing a *Bonnie and Clyde* dynamic to the story.
+* **Target Platforms:** PlayStation 5 and Xbox Series X/S at launch.
+* **Engine Improvements:** Powered by the latest iteration of RAGE, featuring real-time water physics, dense crowd simulation, and unprecedented volumetric clouds.
+
+---
+
+## 🤯 Fun Facts & Mind-Blowing Details
+
+1. **Social Media Satire:** The trailer heavily features an in-game TikTok/Instagram-style social network, poking fun at real-world viral Florida incidents (including Florida Man shenanigans and alligator intrusions!).
+2. **Unmatched NPC Density:** Beaches and city streets are populated with hundreds of unique NPCs with realistic AI routines, day-night schedules, and dynamic responses.
+3. **Vehicle & Customization Depth:** Interior vehicle physics, mirror reflection rendering, and deep car customization look set to rival dedicated racing simulators.
+
+---
+
+> *"Leonida isn't just bigger; it feels alive in a way no game world has ever achieved."*
+
+### Why I'm Beyond Excited
+
+The attention to detail is just insane — from NPC tan lines to realistic hair movement and atmospheric weather effects. Rockstar is setting a whole new benchmark for open-world games once again. Mark your calendars, because this is going to be history in the making!
+        `.trim(),
+        imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80",
+        published: true,
+        isAnonymous: true,
+        authorId: defaultAuthorId,
+        summary: "An overview of the groundbreaking GTA VI gameplay trailer, highlighting Vice City's return, dual protagonists Lucia and Jason, and fun trivia about NPC density and social media satire.",
+      },
+      {
+        title: "Meta's Aggressive AI-Driven Layoffs Backfire as Technical Debt and Glitches Mount",
+        slug: `meta-ai-layoffs-backfire-${Date.now()}-2`,
+        content: `
+# The Cost of Replacing Human Expertise with Automation
+
+Over the past year, **Meta** implemented aggressive headcount reductions in critical engineering, content moderation, and operational teams, pledging to replace large portions of routine workflows with automated Large Language Model (LLM) agents and generative AI infrastructure.
+
+Recent internal leaks and industry reports reveal that the strategy has encountered severe friction, leading to unexpected operational bottlenecks and degraded system reliability.
+
+---
+
+## 📉 Where the Strategy Went Wrong
+
+### 1. Codebase Degradation & Regressions
+Automated code generation tools introduced subtle logic bugs across core platforms (Instagram, Threads, and Meta Ads). Without senior staff engineers who held domain context for legacy backend services, resolving critical regressions took twice as long.
+
+### 2. Moderation & Ad Review Breakdown
+Replacing human moderation teams with automated AI filters led to widespread false positives. Innocent advertiser accounts faced erroneous suspensions, while sophisticated spam operations bypassed the automated checks.
+
+### 3. Re-Hiring at a Premium
+Reports confirm that Meta has quietly had to open contract positions and reach out to previously laid-off senior engineers to restore critical infrastructure oversight—often at higher contracting rates.
+
+---
+
+## 💡 Key Takeaways for Tech Executives
+
+* **AI is an Augmentation Tool, Not a Full Replacement:** LLMs excel at drafting and boilerplating, but lack system-level context, strategic reasoning, and accountability.
+* **Domain Knowledge Loss:** When senior talent leaves, institutional knowledge leaves with them, creating hidden technical debt that automated systems cannot diagnose.
+* **The Cost of Friction:** Downtime and customer frustration from AI errors quickly erode any short-term savings achieved through headcount reduction.
+        `.trim(),
+        imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
+        published: true,
+        isAnonymous: false,
+        authorId: defaultAuthorId,
+        summary: "Meta's effort to replace engineering and operational roles with AI automated agents backfires, causing increased technical debt, moderation breakdowns, and quiet rehiring.",
+      },
+    ];
+
+    for (const articleData of seedArticles) {
+      await db.insert(articles).values(articleData);
+    }
+
+    console.log(`✅ Inserted ${seedArticles.length} new seed article(s) into the database\n`);
+
     try {
       await sql.query(
         `SELECT setval(pg_get_serial_sequence('articles','id'), COALESCE((SELECT MAX(id) FROM articles), 1), true);`,

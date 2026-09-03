@@ -8,6 +8,20 @@
       "when": 1787480824282,
       "tag": "0000_yielding_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787853946251,
+      "tag": "0001_short_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787950975161,
+      "tag": "0002_past_vulture",
+      "breakpoints": true
     }
   ]
 }

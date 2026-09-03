@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavBar } from "@/components/nav/nav-bar";
+import { Toaster } from "@/components/ui/toast";
 import { StackProvider } from "@stackframe/stack";
 import { stackServerApp } from "@/stack/server";
 
@@ -38,6 +39,7 @@ export default function RootLayout({
             {children}
           </StackThemeWrapper>
         </StackProvider>
+        <Toaster />
       </body>
     </html>
   );

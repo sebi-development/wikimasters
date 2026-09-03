@@ -1,13 +1,24 @@
 "use client";
 
-import { Calendar, ChevronRight, Edit, Home, Trash, User } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  Edit,
+  HatGlasses,
+  Home,
+  Trash,
+  User,
+  Eye,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { AnimatedLink } from "@/components/ui/animated-link";
 import { deleteArticleForm } from "@/app/actions/articles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePageview } from "@/hooks/use-pageview";
 
 interface ViewerArticle {
   title: string;
@@ -16,6 +27,7 @@ interface ViewerArticle {
   content: string;
   createdAt: string;
   imageUrl?: string | null;
+  isAnonymous?: boolean;
 }
 
 interface WikiArticleViewerProps {
@@ -28,6 +40,8 @@ export default function WikiArticleViewer({
   article,
   canEdit = false,
 }: WikiArticleViewerProps) {
+  const localPageviews = usePageview(article.id);
+
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -63,8 +77,17 @@ export default function WikiArticleViewer({
           {/* Article Metadata */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center">
-              <User className="h-4 w-4 mr-1" />
-              <span>By {article.author ?? "Unknown"}</span>
+              {article.isAnonymous ? (
+                <>
+                  <HatGlasses className="h-4 w-4 mr-1" />
+                  <span>Anonymous author</span>
+                </>
+              ) : (
+                <>
+                  <User className="h-4 w-4 mr-1" />
+                  <span>{article.author ?? "Unknown"}</span>
+                </>
+              )}
             </div>
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-1" />
@@ -72,6 +95,11 @@ export default function WikiArticleViewer({
             </div>
             <div className="flex items-center">
               <Badge variant="secondary">Article</Badge>
+              <div className="ml-3 flex items-center text-sm text-muted-foreground">
+                <Eye className="h-4 w-4 mr-1" />
+                <span>{localPageviews ? localPageviews : "-"}</span>
+                <span className="ml-1">views</span>
+              </div>
             </div>
           </div>
         </div>
@@ -143,6 +171,15 @@ export default function WikiArticleViewer({
                 // Customize paragraph styles
                 p: ({ children }) => (
                   <p className="mb-4 text-foreground leading-7">{children}</p>
+                ),
+                // Inline formatting
+                strong: ({ children }) => (
+                  <strong className="font-bold text-foreground">
+                    {children}
+                  </strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic text-foreground">{children}</em>
                 ),
                 // Customize list styles
                 ul: ({ children }) => (
@@ -217,9 +254,13 @@ export default function WikiArticleViewer({
 
       {/* Footer Actions */}
       <div className="mt-8 flex justify-between items-center">
-        <Link href="/">
-          <Button variant="outline">← Back to Articles</Button>
-        </Link>
+        <AnimatedLink
+          href="/"
+          direction="left"
+          className="text-muted-foreground hover:text-foreground"
+        >
+          Back to Articles
+        </AnimatedLink>
       </div>
     </div>
   );

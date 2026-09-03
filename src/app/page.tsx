@@ -22,10 +22,12 @@ export default async function Home() {
               year: "numeric",
             })}
             summary={
-              article.content.length > 200
-                ? `${article.content.slice(0, 200)}…`
-                : article.content
+              article.summary
+                ? article.summary
+                : `${article.content.slice(0, 150)}…`
             }
+            isAiSummary={!!article.summary}
+            isAnonymous={!!article.isAnonymous}
             href={`/wiki/${article.id}`}
           />
         ))}

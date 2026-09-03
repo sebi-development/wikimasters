@@ -12,17 +12,19 @@ interface ViewArticlePageProps {
 export default async function ViewArticlePage({
   params,
 }: ViewArticlePageProps) {
-  await stackServerApp.getUser({ or: "redirect" });
   const { id } = await params;
 
-  const article = await getArticleById(+id);
+  const [user, article] = await Promise.all([
+    stackServerApp.getUser({ or: "redirect" }),
+    getArticleById(+id),
+  ]);
 
   if (!article) {
     notFound();
   }
 
-  // Permission check – in a real app this would compare article.authorId to user.id
-  const canEdit = true;
+  // Permission check: compare article.authorId to user.id
+  const canEdit = user.id === article.authorId;
 
   return (
     <WikiArticleViewer
@@ -33,6 +35,7 @@ export default async function ViewArticlePage({
         author: article.author,
         createdAt: article.createdAt,
         imageUrl: article.imageUrl,
+        isAnonymous: article.isAnonymous,
       }}
       canEdit={canEdit}
     />

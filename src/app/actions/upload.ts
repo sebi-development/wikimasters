@@ -1,9 +1,6 @@
 "use server";
 import { stackServerApp } from '@/stack/server';
-import { put } from '@vercel/blob'
-
-// Server action to handle uploads (stub)
-// TODO: Replace placeholder logic with real Cloudinary (or other) upload
+import { put, del } from '@vercel/blob'
 
 export type UploadedFile = {
   url: string;
@@ -37,9 +34,6 @@ export async function uploadFile(formData: FormData): Promise<UploadedFile> {
     throw new Error("File too large");
   }
 
-  // TODO: Insert Cloudinary upload code here.
-  // Example: upload using Cloudinary SDK on the server and return secure_url
-
   try {
     const blob = await put(file.name, file, {
       access: 'public',
@@ -56,4 +50,12 @@ export async function uploadFile(formData: FormData): Promise<UploadedFile> {
     console.error('Something went wrong uploading your image')
     throw new Error('Something went wrong uploading your image')
   }
+}
+
+export async function deleteFile(url: string): Promise<void> {
+  // Auth check (same pattern as your other actions)
+  const user = await stackServerApp.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  await del(url)
 }

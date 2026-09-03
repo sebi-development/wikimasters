@@ -116,9 +116,16 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+body {
+  overflow-y: auto !important;
 }
 
 /* React MD Editor styles */
@@ -148,4 +155,17 @@
 .w-md-editor-bar button:hover {
   background-color: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
+}
+
+/* AI gradient shimmer animation */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Card border sweep — gradient travels left-to-right on hover */
+@keyframes border-sweep {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
 }
