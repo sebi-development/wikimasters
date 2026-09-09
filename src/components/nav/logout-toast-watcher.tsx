@@ -9,7 +9,7 @@ export function LogoutToastWatcher({ userExists }: { userExists: boolean }) {
   useEffect(() => {
     // If they were logged in before, but now they are not, they just logged out!
     if (prevUserExists.current && !userExists) {
-      toast({
+      toast.add({
         type: "success",
         title: "Logged out",
         description: "You have been securely signed out.",
